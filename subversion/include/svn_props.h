@@ -589,6 +589,12 @@ svn_prop_name_is_valid(const char *prop_name);
 /** The fs revision property that stores a commit's date. */
 #define SVN_PROP_REVISION_DATE  SVN_PROP_PREFIX "date"
 
+/** The fs revision property that stores a commit's metadata. */
+#define SVN_PROP_REVISION_METADATA  SVN_PROP_PREFIX "metadata"
+
+/** The fs revision property that stores a commit's signature. */
+#define SVN_PROP_REVISION_SIGNATURE  SVN_PROP_PREFIX "signature"
+
 /** The fs revision property that stores a commit's "original" date.
  *
  * The svn:date property must be monotonically increasing, along with
