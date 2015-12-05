@@ -54,6 +54,9 @@
 #include "private/svn_skel.h"
 #include "private/svn_wc_private.h"
 #include "private/svn_token.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 
 #define NOT_IMPLEMENTED() SVN__NOT_IMPLEMENTED()
@@ -16200,6 +16203,8 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
   commit_queue_item_t *cqi;
   const char *local_relpath;
   int i;
+  struct stat path_stat;
+  
   local_relpath = svn_dirent_skip_ancestor(queue->wcroot->abspath,
                                            local_abspath);
 
@@ -16210,9 +16215,14 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
                 svn_dirent_local_style(local_abspath, scratch_pool),
                 svn_dirent_local_style(queue->wcroot->abspath, scratch_pool));
 
-printf("%s - ", local_relpath);
-for(i = 0; i < 20; i++) printf("%02x", new_sha1_checksum->digest[i]);
+/*printf("%s - ", local_relpath);*/
+stat(local_relpath, &path_stat);
+if(S_ISREG(path_stat.st_mode))
+{
+	printf("%s - ", local_relpath);
+for(i = 0; i < 20; i++) {printf("%02x", new_sha1_checksum->digest[i]);}
 printf("\n");
+}
   cqi = apr_pcalloc(result_pool, sizeof(*cqi));
   cqi->local_relpath = local_relpath;
   cqi->recurse = recurse;
