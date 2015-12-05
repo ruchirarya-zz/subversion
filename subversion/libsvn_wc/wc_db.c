@@ -16210,6 +16210,8 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
                 svn_dirent_local_style(local_abspath, scratch_pool),
                 svn_dirent_local_style(queue->wcroot->abspath, scratch_pool));
 
+printf("\n%s\n%s\n%s\n", local_relpath, local_abspath, new_sha1_checksum->digest);
+
   cqi = apr_pcalloc(result_pool, sizeof(*cqi));
   cqi->local_relpath = local_relpath;
   cqi->recurse = recurse;

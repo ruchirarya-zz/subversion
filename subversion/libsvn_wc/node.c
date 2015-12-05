@@ -814,8 +814,6 @@ svn_wc__node_get_commit_status(svn_boolean_t *added,
   svn_boolean_t have_more_work;
   svn_boolean_t op_root;
 
-printf("\n%s\n", local_abspath);
-
   /* ### All of this should be handled inside a single read transaction */
   SVN_ERR(svn_wc__db_read_info(&status, NULL, revision, NULL,
                                NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
