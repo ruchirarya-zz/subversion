@@ -57,6 +57,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string.h>
 
 
 #define NOT_IMPLEMENTED() SVN__NOT_IMPLEMENTED()
@@ -69,6 +70,7 @@
 
 #define WCROOT_TEMPDIR_RELPATH   "tmp"
 
+#define COMMIT_METADATA  "commeta"
 
 /*
  * PARAMETER ASSERTIONS
@@ -16218,9 +16220,14 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
   stat(local_relpath, &path_stat);
   if(S_ISREG(path_stat.st_mode))
   {
+    int size = 0;
+    char *dspath = NULL;
+    size = (strlen(local_abspath)-strlen(local_relpath));
     printf("%s - ", local_relpath);
-    for(i = 0; i < 20; i++) {printf("%02x", new_sha1_checksum->digest[i]);}
-    printf("\n");
+    for(i = 0; i < 20; i++) printf("%02x", new_sha1_checksum->digest[i]);
+    dspath = svn_string_ncreate(local_abspath, size, scratch_pool)->data;
+    strcat(dspath, ".svn/commeta");
+    printf("\n%s\n", dspath);
   }
 
   cqi = apr_pcalloc(result_pool, sizeof(*cqi));
