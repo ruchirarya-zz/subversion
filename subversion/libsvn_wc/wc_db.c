@@ -16215,14 +16215,14 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
                 svn_dirent_local_style(local_abspath, scratch_pool),
                 svn_dirent_local_style(queue->wcroot->abspath, scratch_pool));
 
-/*printf("%s - ", local_relpath);*/
-stat(local_relpath, &path_stat);
-if(S_ISREG(path_stat.st_mode))
-{
-	printf("%s - ", local_relpath);
-for(i = 0; i < 20; i++) {printf("%02x", new_sha1_checksum->digest[i]);}
-printf("\n");
-}
+  stat(local_relpath, &path_stat);
+  if(S_ISREG(path_stat.st_mode))
+  {
+    printf("%s - ", local_relpath);
+    for(i = 0; i < 20; i++) {printf("%02x", new_sha1_checksum->digest[i]);}
+    printf("\n");
+  }
+
   cqi = apr_pcalloc(result_pool, sizeof(*cqi));
   cqi->local_relpath = local_relpath;
   cqi->recurse = recurse;
