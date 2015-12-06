@@ -16223,11 +16223,11 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
     FILE *p;
     
     size = (strlen(local_abspath)-strlen(local_relpath));
-    dspath = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/commeta");
-    printf("%s - ", local_relpath);
+    dspath = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lc-meta");
+    /*printf("%s - ", local_relpath);*/
     p = fopen(dspath, "a+");
     fputs(local_relpath, p);
-    fprintf(p, " - ");
+    fputc('\n', p);
     fputs(svn_checksum_to_cstring(new_sha1_checksum, scratch_pool), p);
     fputc('\n', p);
     fclose(p);
