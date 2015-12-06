@@ -16203,7 +16203,7 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
                             apr_pool_t *scratch_pool)
 {
   commit_queue_item_t *cqi;
-  const char *local_relpath, *dspath;
+  const char *local_relpath, *dspath = (const char *)malloc(100*sizeof(char));
   struct stat path_stat;
   
   local_relpath = svn_dirent_skip_ancestor(queue->wcroot->abspath,
@@ -16223,7 +16223,7 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
     FILE *p;
     
     size = (strlen(local_abspath)-strlen(local_relpath));
-    dspath = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lc-meta");
+    dspath = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/tlc-meta");
     /*printf("%s - ", local_relpath);*/
     p = fopen(dspath, "a+");
     fputs(local_relpath, p);
