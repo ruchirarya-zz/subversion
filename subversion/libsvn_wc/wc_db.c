@@ -16203,8 +16203,7 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
                             apr_pool_t *scratch_pool)
 {
   commit_queue_item_t *cqi;
-  const char *local_relpath;
-  int i;
+  const char *local_relpath, *dspath;
   struct stat path_stat;
   
   local_relpath = svn_dirent_skip_ancestor(queue->wcroot->abspath,
@@ -16220,14 +16219,20 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
   stat(local_relpath, &path_stat);
   if(S_ISREG(path_stat.st_mode))
   {
-    int size = 0;
-    char *dspath = NULL;
+    int /*i = 0,*/ size = 0;
+    FILE *p;
+    
     size = (strlen(local_abspath)-strlen(local_relpath));
+    dspath = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/commeta");
     printf("%s - ", local_relpath);
-    for(i = 0; i < 20; i++) printf("%02x", new_sha1_checksum->digest[i]);
-    dspath = svn_string_ncreate(local_abspath, size, scratch_pool)->data;
-    strcat(dspath, ".svn/commeta");
-    printf("\n%s\n", dspath);
+    p = fopen(dspath, "a+");
+    fputs(local_relpath, p);
+    fprintf(p, " - ");
+    fputs(svn_checksum_to_cstring(new_sha1_checksum, scratch_pool), p);
+    fputc('\n', p);
+    fclose(p);
+    /*for(i = 0; i < 20; i++) printf("%02x", new_sha1_checksum->digest[i]);
+    printf("\n%s\n", dspath);*/
   }
 
   cqi = apr_pcalloc(result_pool, sizeof(*cqi));
