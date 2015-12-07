@@ -16203,7 +16203,10 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
                             apr_pool_t *scratch_pool)
 {
   commit_queue_item_t *cqi;
-  const char *local_relpath, *dspath = (const char *)malloc(100*sizeof(char));
+  const char *local_relpath,
+  *tlcmeta = (const char *)malloc(100*sizeof(char)),
+  *lcmeta = (const char *)malloc(100*sizeof(char)),
+  *lumeta = (const char *)malloc(100*sizeof(char));
   struct stat path_stat;
   
   local_relpath = svn_dirent_skip_ancestor(queue->wcroot->abspath,
@@ -16223,16 +16226,19 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
     FILE *p;
     
     size = (strlen(local_abspath)-strlen(local_relpath));
-    dspath = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/tlc-meta");
-    /*printf("%s - ", local_relpath);*/
-    p = fopen(dspath, "a+");
+    lcmeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lc-meta");
+    tlcmeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/tlc-meta");
+    lumeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lu-meta");
+    printf("\n%s\n%s\n%s", lcmeta, tlcmeta, lumeta);
+    if(fopen(lcmeta, "r") != NULL)
+    p = fopen(lcmeta, "a+");
     fputs(local_relpath, p);
     fputc('\n', p);
     fputs(svn_checksum_to_cstring(new_sha1_checksum, scratch_pool), p);
     fputc('\n', p);
     fclose(p);
     /*for(i = 0; i < 20; i++) printf("%02x", new_sha1_checksum->digest[i]);
-    printf("\n%s\n", dspath);*/
+    printf("\n%s\n", lcmeta);*/
   }
 
   cqi = apr_pcalloc(result_pool, sizeof(*cqi));
