@@ -16227,8 +16227,8 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
     size = (strlen(local_abspath)-strlen(local_relpath));
     lcmeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lc-meta");
     lumeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lu-meta");
-    printf("\n%s\n%s\n%s", lcmeta, tlcmeta, lumeta);
-    if(fopen(lcmeta, "r") != NULL)
+    /*printf("\n%s\n%s", lcmeta, lumeta);*/
+    if((fopen(lcmeta, "r") != NULL) && (fopen(lumeta, "r") != NULL))
     p = fopen(lcmeta, "a+");
     fputs(local_relpath, p);
     fputc('\n', p);
