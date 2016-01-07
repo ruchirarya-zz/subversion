@@ -16204,8 +16204,8 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
 {
   commit_queue_item_t *cqi;
   const char *local_relpath,
-  *lcmeta = (const char *)malloc(100*sizeof(char)),
-  *lumeta = (const char *)malloc(100*sizeof(char));
+  *lcmeta = (const char *)malloc(100*sizeof(char));
+  /*\*lumeta = (const char *)malloc(100*sizeof(char));*/
   struct stat path_stat;
   
   local_relpath = svn_dirent_skip_ancestor(queue->wcroot->abspath,
@@ -16221,20 +16221,43 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
   stat(local_relpath, &path_stat);
   if(S_ISREG(path_stat.st_mode))
   {
-    int /*i = 0,*/ size = 0;
-    FILE *p;
+    int i = 0, size = 0;
+    FILE *p, *f;
+    char *str = malloc(100*sizeof(char));
+	fpos_t position;
     
     size = (strlen(local_abspath)-strlen(local_relpath));
     lcmeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lc-meta");
-    lumeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lu-meta");
+    /*lumeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lu-meta");*/
     /*printf("\n%s\n%s", lcmeta, lumeta);*/
-    if((fopen(lcmeta, "r") != NULL) && (fopen(lumeta, "r") != NULL))
-    p = fopen(lcmeta, "a+");
-    fputs(local_relpath, p);
-    fputc('\n', p);
-    fputs(svn_checksum_to_cstring(new_sha1_checksum, scratch_pool), p);
-    fputc('\n', p);
-    fclose(p);
+    if(fopen(lcmeta, "r+") == NULL)
+	{	p = fopen(lcmeta, "a+");
+		fclose(p);
+	}
+    p = fopen(lcmeta, "r+");
+    
+    while(fgets(str, 100, p) != NULL)
+	{
+		/*printf("%s", str);*/
+		str[strlen(str) - 1] = '\0';
+		if(!strcmp(str, local_relpath))
+		{
+			fgetpos(p, &position);
+			fsetpos(p, &position);
+			fputs(svn_checksum_to_cstring(new_sha1_checksum, scratch_pool), p);
+			i++;
+		}
+	}
+	if(i==0)
+	{
+		f = fopen(lcmeta, "a+");
+		fputs(local_relpath, f);
+		fputc('\n', f);
+		fputs(svn_checksum_to_cstring(new_sha1_checksum, scratch_pool), f);
+		fputc('\n', f);
+		fclose(f);
+	}
+	fclose(p);
     /*for(i = 0; i < 20; i++) printf("%02x", new_sha1_checksum->digest[i]);
     printf("\n%s\n", lcmeta);*/
   }
