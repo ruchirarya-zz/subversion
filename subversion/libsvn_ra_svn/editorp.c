@@ -266,12 +266,27 @@ static svn_error_t *ra_svn_add_file(const char *path,
 {
   ra_svn_baton_t *b = parent_baton;
   const char *token = make_token('c', b->eb, pool);
+  const char *pabsolute;
+  svn_string_t *lcmeta;
+  svn_checksum_t *checksum;
+  FILE *file;
 
   SVN_ERR_ASSERT((copy_path && SVN_IS_VALID_REVNUM(copy_rev))
                  || (!copy_path && !SVN_IS_VALID_REVNUM(copy_rev)));
   SVN_ERR(check_for_error(b->eb, pool));
   SVN_ERR(svn_ra_svn__write_cmd_add_file(b->conn, pool,  path, b->token,
                                          token, copy_path, copy_rev));
+  SVN_ERR(svn_dirent_get_absolute(&pabsolute, path, pool));
+  lcmeta = svn_string_ncreate(pabsolute, strlen(pabsolute)-strlen(path), pool);
+  lcmeta->data = svn_dirent_canonicalize(lcmeta->data,pool);
+  lcmeta->data = svn_dirent_join(lcmeta->data, ".svn/lcmeta", pool);
+  SVN_ERR(svn_io_file_checksum2(&checksum, path, svn_checksum_md5, pool));
+  file = fopen(lcmeta->data, "a+");
+  fputs(path, file);
+  fputc('\n', file);
+  fputs(svn_checksum_to_cstring(checksum, pool), file);
+  fputc('\n', file);
+  fclose(file);
   *file_baton = ra_svn_make_baton(b->conn, pool, b->eb, token);
   return SVN_NO_ERROR;
 }

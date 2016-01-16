@@ -16203,10 +16203,7 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
                             apr_pool_t *scratch_pool)
 {
   commit_queue_item_t *cqi;
-  const char *local_relpath,
-  *lcmeta = (const char *)malloc(200*sizeof(char));
-  /*\*lumeta = (const char *)malloc(200*sizeof(char));*/
-  struct stat path_stat;
+  const char *local_relpath;
   
   local_relpath = svn_dirent_skip_ancestor(queue->wcroot->abspath,
                                            local_abspath);
@@ -16217,51 +16214,6 @@ svn_wc__db_commit_queue_add(svn_wc__db_commit_queue_t *queue,
                 _("The path '%s' is not in the working copy '%s'"),
                 svn_dirent_local_style(local_abspath, scratch_pool),
                 svn_dirent_local_style(queue->wcroot->abspath, scratch_pool));
-
-  stat(local_relpath, &path_stat);
-  if(S_ISREG(path_stat.st_mode))
-  {
-    int i = 0, size = 0;
-    FILE *p;
-    char *str = calloc(200,sizeof(char));
-	fpos_t position;
-	
-    size = (strlen(local_abspath)-strlen(local_relpath));
-    lcmeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lc-meta");
-    /*lumeta = strcat((char *)svn_string_ncreate(local_abspath, size, scratch_pool)->data, ".svn/lu-meta");*/
-    /*printf("\n%s\n%s", lcmeta, lumeta);*/
-	
-	p = fopen(lcmeta, "r+");
-    if(p)
-    {
-		while(fgets(str, 200, p) != NULL)
-		{
-			/*printf("%s", str);*/
-			str[strlen(str) - 1] = '\0';
-			if(!strcmp(str, local_relpath))
-			{
-				fgetpos(p, &position);
-				fsetpos(p, &position);
-				fputs(svn_checksum_to_cstring(new_sha1_checksum, scratch_pool), p);
-				i++;
-			}
-		}
-		fclose(p);
-	}
-		
-	if(i==0)
-	{
-		p = fopen(lcmeta, "a+");
-		fputs(local_relpath, p);
-		fputc('\n', p);
-		fputs(svn_checksum_to_cstring(new_sha1_checksum, scratch_pool), p);
-		fputc('\n', p);
-		fclose(p);
-	}
-	free(str);
-    /*for(i = 0; i < 20; i++) printf("%02x", new_sha1_checksum->digest[i]);
-    printf("\n%s\n", lcmeta);*/
-  }
 
   cqi = apr_pcalloc(result_pool, sizeof(*cqi));
   cqi->local_relpath = local_relpath;
