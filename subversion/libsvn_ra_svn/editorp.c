@@ -281,10 +281,10 @@ static svn_error_t *ra_svn_add_file(const char *path,
   lcmeta = svn_string_ncreate(pabsolute, strlen(pabsolute)-strlen(path), pool);
   lcmeta->data = svn_dirent_canonicalize(lcmeta->data,pool);
   lcmeta->data = svn_dirent_join(lcmeta->data, ".svn/lcmeta", pool);
-  SVN_ERR(svn_io_file_checksum2(&checksum, path, svn_checksum_md5, pool));
+  SVN_ERR(svn_io_file_checksum2(&checksum, path, svn_checksum_sha1, pool));
   SVN_ERR(svn_io_file_open(&file, lcmeta->data,
-							APR_WRITE | APR_CREATE | APR_APPEND,
-							APR_OS_DEFAULT, pool));
+						   APR_WRITE | APR_CREATE | APR_APPEND,
+						   APR_OS_DEFAULT, pool));
   apr_file_puts(path, file);
   SVN_ERR(svn_io_file_putc('\n', file, pool));
   apr_file_puts(svn_checksum_to_cstring(checksum, pool), file);
@@ -303,10 +303,35 @@ static svn_error_t *ra_svn_open_file(const char *path,
 {
   ra_svn_baton_t *b = parent_baton;
   const char *token = make_token('c', b->eb, pool);
+  const char *pabsolute;
+  svn_string_t *lcmeta;
+  svn_checksum_t *checksum;
+  apr_file_t *file;
+  svn_stringbuf_t *stringbuf;
+  svn_boolean_t eof;
+  const char *eol;
   
   SVN_ERR(check_for_error(b->eb, b->pool));
   SVN_ERR(svn_ra_svn__write_cmd_open_file(b->conn, pool, path, b->token,
                                           token, rev));
+
+  SVN_ERR(svn_dirent_get_absolute(&pabsolute, path, pool));
+  lcmeta = svn_string_ncreate(pabsolute, strlen(pabsolute)-strlen(path), pool);
+  lcmeta->data = svn_dirent_canonicalize(lcmeta->data,pool);
+  lcmeta->data = svn_dirent_join(lcmeta->data, ".svn/lcmeta", pool);
+  SVN_ERR(svn_io_file_checksum2(&checksum, path, svn_checksum_sha1, pool));
+  SVN_ERR(svn_io_file_open(&file, lcmeta->data,
+						   APR_READ | APR_WRITE,
+						   APR_OS_DEFAULT, pool));
+  do
+  {
+    SVN_ERR(svn_io_file_readline(file, &stringbuf, &eol, &eof, APR_SIZE_MAX, pool, pool));
+    if(!strcmp(path, stringbuf->data))
+    {
+	  apr_file_puts(svn_checksum_to_cstring(checksum, pool), file);
+	}
+  }while(!eof);
+  SVN_ERR(svn_io_file_close(file, pool));
 
   *file_baton = ra_svn_make_baton(b->conn, pool, b->eb, token);
   return SVN_NO_ERROR;
