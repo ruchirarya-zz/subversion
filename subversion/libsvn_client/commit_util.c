@@ -1540,7 +1540,17 @@ do_item_commit(void **dir_baton,
   svn_client_ctx_t *ctx = icb->ctx;
   svn_error_t *err;
   const char *local_abspath = NULL;
+  const char *wcroot_abspath = NULL;
+  svn_string_t *lcmeta = svn_string_create_empty(pool);
+  svn_checksum_t *checksum;
+  apr_file_t *file;
+  svn_stringbuf_t *stringbuf;
+  svn_boolean_t eof;
+  const char *eol;
 
+  svn_client_get_wc_root(&wcroot_abspath, item->path, ctx, pool, pool);
+  lcmeta->data = svn_dirent_join(wcroot_abspath, ".svn/lcmeta", pool);
+  
   /* Do some initializations. */
   *dir_baton = NULL;
   if (item->kind != svn_node_none && item->path)
@@ -1676,6 +1686,16 @@ do_item_commit(void **dir_baton,
                    path, parent_baton, item->copyfrom_url,
                    item->copyfrom_url ? item->copyfrom_rev : SVN_INVALID_REVNUM,
                    file_pool, &file_baton);
+                   
+          SVN_ERR(svn_io_file_checksum2(&checksum, item->path, svn_checksum_sha1, pool));
+          SVN_ERR(svn_io_file_open(&file, lcmeta->data,
+								   APR_WRITE | APR_CREATE | APR_APPEND,
+								   APR_OS_DEFAULT, pool));
+          apr_file_puts(svn_dirent_skip_ancestor(wcroot_abspath, item->path), file);
+          SVN_ERR(svn_io_file_putc('\n', file, pool));
+          apr_file_puts(svn_checksum_to_cstring(checksum, pool), file);
+          SVN_ERR(svn_io_file_putc('\n', file, pool));
+          SVN_ERR(svn_io_file_close(file, pool));
         }
       else /* May be svn_node_none when adding parent dirs for a copy. */
         {
@@ -1804,6 +1824,20 @@ do_item_commit(void **dir_baton,
           err = editor->open_file(path, parent_baton,
                                     item->revision,
                                     file_pool, &file_baton);
+          
+          SVN_ERR(svn_io_file_checksum2(&checksum, item->path, svn_checksum_sha1, pool));
+          SVN_ERR(svn_io_file_open(&file, lcmeta->data,
+							       APR_READ | APR_WRITE,
+							       APR_OS_DEFAULT, pool));
+          do
+          {
+			  SVN_ERR(svn_io_file_readline(file, &stringbuf, &eol, &eof, APR_SIZE_MAX, pool, pool));
+			  if(!strcmp(svn_dirent_skip_ancestor(wcroot_abspath, item->path), stringbuf->data))
+			  {
+				  apr_file_puts(svn_checksum_to_cstring(checksum, pool), file);
+			  }
+          }while(!eof);
+          SVN_ERR(svn_io_file_close(file, pool));
 
           if (err)
             goto fixup_error;
