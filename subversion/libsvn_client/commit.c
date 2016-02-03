@@ -550,10 +550,7 @@ svn_client_commit6(const apr_array_header_t *targets,
   int depth_empty_after = -1;
   apr_hash_t *move_youngest = NULL;
   int i;
-  apr_file_t *file;
-  svn_stringbuf_t *stringbuf;
-  svn_boolean_t eof;
-  const char *eol;
+  svn_stringbuf_t *stringbuf = svn_stringbuf_create_empty(pool);
   ra_svn_edit_baton_t *eb;
   svn_string_t *lcmeta = svn_string_create_empty(pool);
 
@@ -920,14 +917,9 @@ svn_client_commit6(const apr_array_header_t *targets,
 
 eb = edit_baton;
 lcmeta->data = svn_dirent_join(base_abspath, ".svn/lcmeta", pool);
-SVN_ERR(svn_io_file_open(&file, lcmeta->data, APR_READ, APR_OS_DEFAULT, pool));
-  do
-  {
-	 SVN_ERR(svn_io_file_readline(file, &stringbuf, &eol, &eof, APR_SIZE_MAX, pool, pool));
-	 SVN_ERR(svn_ra_svn__write_cstring(eb->conn, pool, stringbuf->data));
-  }while(!eof);
+SVN_ERR(svn_stringbuf_from_file2(&stringbuf, lcmeta->data, pool));
+SVN_ERR(svn_ra_svn__write_cstring(eb->conn, pool, stringbuf->data));
 SVN_ERR(svn_ra_svn__flush(eb->conn, pool));
-SVN_ERR(svn_io_file_close(file, pool));
 
   /* Handle a successful commit. */
   if ((! cmt_err)
