@@ -46,8 +46,17 @@
 #include "private/svn_wc_private.h"
 #include "private/svn_ra_private.h"
 #include "private/svn_sorts_private.h"
+#include "private/svn_ra_svn_private.h"
 
 #include "svn_private_config.h"
+
+typedef struct ra_svn_edit_baton_t {
+  svn_ra_svn_conn_t *conn;
+  svn_ra_svn_edit_callback callback;    /* Called on successful completion. */
+  void *callback_baton;
+  int next_token;
+  svn_boolean_t got_status;
+} ra_svn_edit_baton_t;
 
 struct capture_baton_t {
   svn_commit_callback2_t original_callback;
@@ -541,6 +550,9 @@ svn_client_commit6(const apr_array_header_t *targets,
   int depth_empty_after = -1;
   apr_hash_t *move_youngest = NULL;
   int i;
+  svn_stringbuf_t *stringbuf = svn_stringbuf_create_empty(pool);
+  ra_svn_edit_baton_t *eb;
+  svn_string_t *lcmeta = svn_string_create_empty(pool);
 
   SVN_ERR_ASSERT(depth != svn_depth_unknown && depth != svn_depth_exclude);
 
@@ -902,6 +914,12 @@ svn_client_commit6(const apr_array_header_t *targets,
               svn_client__do_commit(base_url, commit_items, editor, edit_baton,
                                     notify_prefix, &sha1_checksums, ctx, pool,
                                     iterpool));
+
+eb = edit_baton;
+lcmeta->data = svn_dirent_join(base_abspath, ".svn/lcmeta", pool);
+SVN_ERR(svn_stringbuf_from_file2(&stringbuf, lcmeta->data, pool));
+SVN_ERR(svn_ra_svn__write_cstring(eb->conn, pool, stringbuf->data));
+SVN_ERR(svn_ra_svn__flush(eb->conn, pool));
 
   /* Handle a successful commit. */
   if ((! cmt_err)
