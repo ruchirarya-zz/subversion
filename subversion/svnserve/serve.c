@@ -3303,6 +3303,17 @@ get_deleted_rev(svn_ra_svn_conn_t *conn,
 }
 
 static svn_error_t *
+meta_data(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
+          apr_array_header_t *params, void *baton)
+{
+  const char *meta;
+  
+  SVN_ERR(svn_ra_svn__parse_tuple(params, pool, "c", &meta));
+  
+  return SVN_NO_ERROR;
+}
+
+static svn_error_t *
 get_inherited_props(svn_ra_svn_conn_t *conn,
                     apr_pool_t *pool,
                     apr_array_header_t *params,
@@ -3397,6 +3408,7 @@ static const svn_ra_svn_cmd_entry_t main_commands[] = {
   { "replay-range",    replay_range },
   { "get-deleted-rev", get_deleted_rev },
   { "get-iprops",      get_inherited_props },
+  { "meta-data",       meta_data },
   { NULL }
 };
 
