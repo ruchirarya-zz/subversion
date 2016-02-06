@@ -1655,6 +1655,17 @@ svn_ra_svn__write_cmd_open_root(svn_ra_svn_conn_t *conn,
 }
 
 svn_error_t *
+svn_ra_svn__write_cmd_meta_data(svn_ra_svn_conn_t *conn,
+                                apr_pool_t *pool,
+                                const char *strbuf)
+{
+  SVN_ERR(writebuf_write_literal(conn, pool, "( meta-data ( "));
+  SVN_ERR(write_tuple_cstring(conn, pool, strbuf));
+  SVN_ERR(writebuf_write_literal(conn, pool, ") ) "));
+  return SVN_NO_ERROR;
+}
+
+svn_error_t *
 svn_ra_svn__write_cmd_delete_entry(svn_ra_svn_conn_t *conn,
                                    apr_pool_t *pool,
                                    const char *path,

@@ -915,11 +915,11 @@ svn_client_commit6(const apr_array_header_t *targets,
                                     notify_prefix, &sha1_checksums, ctx, pool,
                                     iterpool));
 
-eb = edit_baton;
-lcmeta->data = svn_dirent_join(base_abspath, ".svn/lcmeta", pool);
-SVN_ERR(svn_stringbuf_from_file2(&stringbuf, lcmeta->data, pool));
-SVN_ERR(svn_ra_svn__write_cstring(eb->conn, pool, stringbuf->data));
-SVN_ERR(svn_ra_svn__flush(eb->conn, pool));
+  eb = edit_baton;
+  lcmeta->data = svn_dirent_join(base_abspath, ".svn/lcmeta", pool);
+  SVN_ERR(svn_stringbuf_from_file2(&stringbuf, lcmeta->data, pool));
+  svn_ra_svn__write_cmd_meta_data(eb->conn, pool, stringbuf->data);
+  SVN_ERR(svn_ra_svn__flush(eb->conn, pool));
 
   /* Handle a successful commit. */
   if ((! cmt_err)
