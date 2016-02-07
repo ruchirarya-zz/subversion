@@ -918,7 +918,8 @@ svn_client_commit6(const apr_array_header_t *targets,
   eb = edit_baton;
   lcmeta->data = svn_dirent_join(base_abspath, ".svn/lcmeta", pool);
   SVN_ERR(svn_stringbuf_from_file2(&stringbuf, lcmeta->data, pool));
-  svn_ra_svn__write_cmd_meta_data(eb->conn, pool, stringbuf->data);
+  svn_ra_svn__write_cmd_meta_data(eb->conn, pool, stringbuf->data,
+                                  commit_info->revision);
   SVN_ERR(svn_ra_svn__flush(eb->conn, pool));
 
   /* Handle a successful commit. */

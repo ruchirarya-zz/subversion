@@ -3306,10 +3306,23 @@ static svn_error_t *
 meta_data(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
           apr_array_header_t *params, void *baton)
 {
-  const char *meta;
+  const char *metadata, *metapath, *revnum;
+  server_baton_t *b = baton;
+  svn_node_kind_t kind;
+  apr_file_t *file;
   
-  SVN_ERR(svn_ra_svn__parse_tuple(params, pool, "c", &meta));
-  
+  SVN_ERR(svn_ra_svn__parse_tuple(params, pool, "c?c", &metadata, &revnum));
+  metapath = svn_dirent_join(b->repository->repos_root, "db/meta", pool);
+  SVN_ERR(svn_io_check_path(metapath, &kind, pool));
+  if (kind != svn_node_dir)
+  SVN_ERR(svn_io_dir_make(metapath, APR_OS_DEFAULT, pool));
+  metapath = svn_dirent_join(metapath, revnum, pool);
+  SVN_ERR(svn_io_file_open(&file, metapath,
+					       APR_WRITE | APR_CREATE,
+					       APR_OS_DEFAULT, pool));
+  apr_file_puts(metadata, file);
+  SVN_ERR(svn_io_file_close(file, pool));
+
   return SVN_NO_ERROR;
 }
 

@@ -349,14 +349,15 @@ svn_ra_svn__write_cmd_open_root(svn_ra_svn_conn_t *conn,
                                 svn_revnum_t rev,
                                 const char *token);
 
-/** Send a "meta_data" command over connection @a conn.
- * Use @a strbuf to store metadata and send over the connection @a conn.
- * Use @a pool for allocations.
+/** Send a "meta-data" command and meta-data belonging to revision @a rev
+ * over connection @a conn. Use @a strbuf to store metadata and send over
+ * the connection @a conn. Use @a pool for allocations.
  */
 svn_error_t *
 svn_ra_svn__write_cmd_meta_data(svn_ra_svn_conn_t *conn,
                                 apr_pool_t *pool,
-                                const char *strbuf);
+                                const char *strbuf,
+                                svn_revnum_t rev);
 
 /** Send a "delete-entry" command over connection @a conn.  Delete the
  * @a path at optional revision @a rev below @a parent_token.
