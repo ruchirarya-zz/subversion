@@ -68,6 +68,8 @@ typedef struct commit_callback_baton_t {
   svn_revnum_t *new_rev;
   const char **date;
   const char **author;
+  const char **metadata;
+  const char **signature;
   const char **post_commit_err;
 } commit_callback_baton_t;
 
@@ -1408,7 +1410,10 @@ static svn_error_t *commit(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
   const char *log_msg,
              *date = NULL,
              *author = NULL,
+             *metadata = NULL,
+             *signature = NULL,
              *post_commit_err = NULL;
+  const char *metapath;
   apr_array_header_t *lock_tokens;
   svn_boolean_t keep_locks;
   apr_array_header_t *revprop_list;
@@ -1419,6 +1424,8 @@ static svn_error_t *commit(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
   commit_callback_baton_t ccb;
   svn_revnum_t new_rev;
   authz_baton_t ab;
+  svn_node_kind_t kind;
+  svn_stringbuf_t *stringbuf = svn_stringbuf_create_empty(pool);
 
   ab.server = b;
   ab.conn = conn;
@@ -1475,6 +1482,8 @@ static svn_error_t *commit(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
   ccb.new_rev = &new_rev;
   ccb.date = &date;
   ccb.author = &author;
+  ccb.metadata = &metadata;
+  ccb.signature = &signature;
   ccb.post_commit_err = &post_commit_err;
   /* ### Note that svn_repos_get_commit_editor5 actually wants a decoded URL. */
   SVN_CMD_ERR(svn_repos_get_commit_editor5
@@ -1504,8 +1513,26 @@ static svn_error_t *commit(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
       if (! keep_locks && lock_tokens && lock_tokens->nelts)
         SVN_ERR(unlock_paths(lock_tokens, b, pool));
 
-      SVN_ERR(svn_ra_svn__write_tuple(conn, pool, "r(?c)(?c)(?c)",
-                                      new_rev, date, author, post_commit_err));
+      metapath = svn_dirent_join(b->repository->repos_root, "db/meta", pool);
+      SVN_ERR(svn_io_check_path(metapath, &kind, pool));
+      if (kind != svn_node_dir)
+      SVN_ERR(svn_io_dir_make(metapath, APR_OS_DEFAULT, pool));
+      metapath = svn_dirent_join(metapath, apr_ltoa(pool, (new_rev-1)), pool);
+      SVN_ERR(svn_io_check_path(metapath, &kind, pool));
+      if (kind != svn_node_file)
+      SVN_ERR(svn_io_file_create(metapath, NULL, pool));
+
+      if(new_rev == 1)
+      SVN_ERR(svn_ra_svn__write_tuple(conn, pool, "r(?c)(?c)(?c)(?c)(?c)",
+                                      new_rev, date, author, metadata,
+                                      signature, post_commit_err));
+      else
+      {
+        SVN_ERR(svn_stringbuf_from_file2(&stringbuf, metapath, pool));
+        SVN_ERR(svn_ra_svn__write_tuple(conn, pool, "r(?c)(?c)(?c)(?c)(?c)",
+                                        new_rev, date, author, stringbuf->data,
+                                        signature, post_commit_err));
+      }
 
       if (! b->client_info->tunnel)
         SVN_ERR(svn_fs_deltify_revision(b->repository->fs, new_rev, pool));

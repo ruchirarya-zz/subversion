@@ -1061,10 +1061,12 @@ static svn_error_t *ra_svn_end_commit(void *baton)
 
   SVN_ERR(handle_auth_request(ccb->sess_baton, ccb->pool));
   SVN_ERR(svn_ra_svn__read_tuple(ccb->sess_baton->conn, ccb->pool,
-                                 "r(?c)(?c)?(?c)",
+                                 "r(?c)(?c)?(?c)(?c)(?c)",
                                  &(commit_info->revision),
                                  &(commit_info->date),
                                  &(commit_info->author),
+                                 &(commit_info->metadata),
+                                 &(commit_info->signature),
                                  &(commit_info->post_commit_err)));
 
   commit_info->repos_root = apr_pstrdup(ccb->pool,

@@ -783,6 +783,12 @@ typedef struct svn_commit_info_t
 
   /** author of the commit. */
   const char *author;
+  
+  /** metadata of the commit. */
+  const char *metadata;
+
+  /** signature of the commit. */
+  const char *signature;
 
   /** error message from post-commit hook, or NULL. */
   const char *post_commit_err;
