@@ -553,6 +553,8 @@ svn_client_commit6(const apr_array_header_t *targets,
   svn_stringbuf_t *stringbuf = svn_stringbuf_create_empty(pool);
   ra_svn_edit_baton_t *eb;
   svn_string_t *lcmeta = svn_string_create_empty(pool);
+  svn_string_t *tlcmeta = svn_string_create_empty(pool);
+  const char *utf;
 
   SVN_ERR_ASSERT(depth != svn_depth_unknown && depth != svn_depth_exclude);
 
@@ -916,7 +918,13 @@ svn_client_commit6(const apr_array_header_t *targets,
                                     iterpool));
 
   eb = edit_baton;
+  tlcmeta->data = svn_dirent_join(base_abspath, ".svn/tlcmeta", pool);
+  SVN_ERR(svn_path_cstring_to_utf8(&utf, tlcmeta->data, pool));
+  SVN_ERR(svn_io_file_create(utf, commit_info->metadata , pool));
   lcmeta->data = svn_dirent_join(base_abspath, ".svn/lcmeta", pool);
+  
+  
+  
   SVN_ERR(svn_stringbuf_from_file2(&stringbuf, lcmeta->data, pool));
   svn_ra_svn__write_cmd_meta_data(eb->conn, pool, stringbuf->data,
                                   commit_info->revision);
