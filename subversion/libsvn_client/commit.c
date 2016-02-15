@@ -551,10 +551,15 @@ svn_client_commit6(const apr_array_header_t *targets,
   apr_hash_t *move_youngest = NULL;
   int i;
   svn_stringbuf_t *stringbuf = svn_stringbuf_create_empty(pool);
+  svn_stringbuf_t *fstringbuf = svn_stringbuf_create_empty(pool);
+  svn_stringbuf_t *tfstringbuf = svn_stringbuf_create_empty(pool);
   ra_svn_edit_baton_t *eb;
   svn_string_t *lcmeta = svn_string_create_empty(pool);
   svn_string_t *tlcmeta = svn_string_create_empty(pool);
   const char *utf;
+  apr_file_t *file, *tfile;
+  svn_boolean_t eof, teof;
+  const char *eol, *teol;
 
   SVN_ERR_ASSERT(depth != svn_depth_unknown && depth != svn_depth_exclude);
 
@@ -923,7 +928,46 @@ svn_client_commit6(const apr_array_header_t *targets,
   SVN_ERR(svn_io_file_create(utf, commit_info->metadata , pool));
   lcmeta->data = svn_dirent_join(base_abspath, ".svn/lcmeta", pool);
   
+  SVN_ERR(svn_io_file_open(&file, lcmeta->data,
+					       APR_READ | APR_WRITE,
+					       APR_OS_DEFAULT, pool));
+  do
+  {
+    SVN_ERR(svn_io_file_readline(file, &fstringbuf, &eol, &eof, APR_SIZE_MAX, pool, pool));
+	SVN_ERR(svn_io_file_open(&tfile, tlcmeta->data,
+							 APR_READ | APR_WRITE,
+							 APR_OS_DEFAULT, pool));
+    do
+    {
+      SVN_ERR(svn_io_file_readline(tfile, &tfstringbuf, &teol, &teof, APR_SIZE_MAX, pool, pool));
+	  
+	  if(!strcmp(tfstringbuf->data, fstringbuf->data))
+	  {
+	    SVN_ERR(svn_io_file_readline(file, &fstringbuf, &eol, &eof, APR_SIZE_MAX, pool, pool));
+	    apr_file_puts(fstringbuf->data, tfile);
+	    SVN_ERR(svn_io_file_close(tfile, pool));
+	    break;
+	  }
+	  else if(apr_file_eof(tfile) == APR_EOF)
+	  {
+		SVN_ERR(svn_io_file_close(tfile, pool));
+		SVN_ERR(svn_io_file_open(&tfile, tlcmeta->data,
+								 APR_WRITE | APR_CREATE | APR_APPEND,
+								 APR_OS_DEFAULT, pool));
+        apr_file_puts(fstringbuf->data, tfile);
+        SVN_ERR(svn_io_file_putc('\n', tfile, pool));
+        SVN_ERR(svn_io_file_readline(file, &fstringbuf, &eol, &eof, APR_SIZE_MAX, pool, pool));
+        apr_file_puts(fstringbuf->data, tfile);
+        SVN_ERR(svn_io_file_putc('\n', tfile, pool));
+        SVN_ERR(svn_io_file_close(tfile, pool));
+        break;
+	  }
+	}while(apr_file_eof(tfile) != APR_EOF);
+  }while(apr_file_eof(file) != APR_EOF);
+  SVN_ERR(svn_io_file_close(file, pool));
   
+  SVN_ERR(svn_io_remove_file2(lcmeta->data, TRUE, pool));
+  SVN_ERR(svn_io_file_rename(tlcmeta->data, lcmeta->data, pool));
   
   SVN_ERR(svn_stringbuf_from_file2(&stringbuf, lcmeta->data, pool));
   svn_ra_svn__write_cmd_meta_data(eb->conn, pool, stringbuf->data,
