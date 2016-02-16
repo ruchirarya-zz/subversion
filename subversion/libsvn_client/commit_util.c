@@ -1542,6 +1542,7 @@ do_item_commit(void **dir_baton,
   const char *local_abspath = NULL;
   const char *wcroot_abspath = NULL;
   svn_string_t *lcmeta = svn_string_create_empty(pool);
+  svn_string_t *addmeta = svn_string_create_empty(pool);
   svn_checksum_t *checksum;
   apr_file_t *file;
   svn_stringbuf_t *stringbuf;
@@ -1550,7 +1551,8 @@ do_item_commit(void **dir_baton,
   svn_node_kind_t stat;
 
   svn_client_get_wc_root(&wcroot_abspath, item->path, ctx, pool, pool);
-  lcmeta->data = svn_dirent_join(wcroot_abspath, ".svn/lcmeta", pool);
+  lcmeta->data = svn_dirent_join(wcroot_abspath, ".svn/modmeta", pool);
+  addmeta->data = svn_dirent_join(wcroot_abspath, ".svn/addmeta", pool);
   
   /* Do some initializations. */
   *dir_baton = NULL;
@@ -1689,7 +1691,7 @@ do_item_commit(void **dir_baton,
                    file_pool, &file_baton);
                    
           SVN_ERR(svn_io_file_checksum2(&checksum, item->path, svn_checksum_sha1, pool));
-          SVN_ERR(svn_io_file_open(&file, lcmeta->data,
+          SVN_ERR(svn_io_file_open(&file, addmeta->data,
 								   APR_WRITE | APR_CREATE | APR_APPEND,
 								   APR_OS_DEFAULT, pool));
           apr_file_puts(svn_dirent_skip_ancestor(wcroot_abspath, item->path), file);

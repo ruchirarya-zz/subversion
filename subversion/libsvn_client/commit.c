@@ -556,10 +556,13 @@ svn_client_commit6(const apr_array_header_t *targets,
   ra_svn_edit_baton_t *eb;
   svn_string_t *lcmeta = svn_string_create_empty(pool);
   svn_string_t *tlcmeta = svn_string_create_empty(pool);
+  svn_string_t *addmeta = svn_string_create_empty(pool);
+  svn_string_t *modmeta = svn_string_create_empty(pool);
   const char *utf;
   apr_file_t *file, *tfile;
   svn_boolean_t eof, teof;
   const char *eol, *teol;
+  svn_node_kind_t kind;
 
   SVN_ERR_ASSERT(depth != svn_depth_unknown && depth != svn_depth_exclude);
 
@@ -927,9 +930,11 @@ svn_client_commit6(const apr_array_header_t *targets,
   SVN_ERR(svn_path_cstring_to_utf8(&utf, tlcmeta->data, pool));
   SVN_ERR(svn_io_file_create(utf, commit_info->metadata , pool));
   lcmeta->data = svn_dirent_join(base_abspath, ".svn/lcmeta", pool);
+  addmeta->data = svn_dirent_join(base_abspath, ".svn/addmeta", pool);
+  modmeta->data = svn_dirent_join(base_abspath, ".svn/modmeta", pool);
   
-  SVN_ERR(svn_io_file_open(&file, lcmeta->data,
-					       APR_READ | APR_WRITE,
+  SVN_ERR(svn_io_file_open(&file, modmeta->data,
+					       APR_READ | APR_CREATE | APR_WRITE,
 					       APR_OS_DEFAULT, pool));
   do
   {
@@ -966,8 +971,16 @@ svn_client_commit6(const apr_array_header_t *targets,
   }while(apr_file_eof(file) != APR_EOF);
   SVN_ERR(svn_io_file_close(file, pool));
   
+  SVN_ERR(svn_io_remove_file2(modmeta->data, TRUE, pool));
   SVN_ERR(svn_io_remove_file2(lcmeta->data, TRUE, pool));
   SVN_ERR(svn_io_file_rename(tlcmeta->data, lcmeta->data, pool));
+  
+  SVN_ERR(svn_io_check_path(addmeta->data, &kind, pool));
+  if(kind == svn_node_file)
+  {
+	SVN_ERR(svn_io_append_file(addmeta->data, lcmeta->data, pool));
+    SVN_ERR(svn_io_remove_file2(addmeta->data, TRUE, pool));
+  }
   
   SVN_ERR(svn_stringbuf_from_file2(&stringbuf, lcmeta->data, pool));
   svn_ra_svn__write_cmd_meta_data(eb->conn, pool, stringbuf->data,
