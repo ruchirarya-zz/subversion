@@ -1413,7 +1413,7 @@ static svn_error_t *commit(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
              *metadata = NULL,
              *signature = NULL,
              *post_commit_err = NULL;
-  const char *metapath;
+  const char *metapath, *sigpath;
   apr_array_header_t *lock_tokens;
   svn_boolean_t keep_locks;
   apr_array_header_t *revprop_list;
@@ -1426,6 +1426,7 @@ static svn_error_t *commit(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
   authz_baton_t ab;
   svn_node_kind_t kind;
   svn_stringbuf_t *stringbuf = svn_stringbuf_create_empty(pool);
+  svn_stringbuf_t *sigstringbuf = svn_stringbuf_create_empty(pool);
 
   ab.server = b;
   ab.conn = conn;
@@ -1522,6 +1523,15 @@ static svn_error_t *commit(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
       if (kind != svn_node_file)
       SVN_ERR(svn_io_file_create(metapath, NULL, pool));
 
+	  sigpath = svn_dirent_join(b->repository->repos_root, "db/signature", pool);
+	  SVN_ERR(svn_io_check_path(sigpath, &kind, pool));
+      if (kind != svn_node_dir)
+      SVN_ERR(svn_io_dir_make(sigpath, APR_OS_DEFAULT, pool));
+      sigpath = svn_dirent_join(sigpath, apr_ltoa(pool, (new_rev-1)), pool);
+      SVN_ERR(svn_io_check_path(sigpath, &kind, pool));
+      if (kind != svn_node_file)
+      SVN_ERR(svn_io_file_create(sigpath, NULL, pool));
+
       if(new_rev == 1)
       SVN_ERR(svn_ra_svn__write_tuple(conn, pool, "r(?c)(?c)(?c)(?c)(?c)",
                                       new_rev, date, author, metadata,
@@ -1529,9 +1539,10 @@ static svn_error_t *commit(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
       else
       {
         SVN_ERR(svn_stringbuf_from_file2(&stringbuf, metapath, pool));
+        SVN_ERR(svn_stringbuf_from_file2(&sigstringbuf, sigpath, pool));
         SVN_ERR(svn_ra_svn__write_tuple(conn, pool, "r(?c)(?c)(?c)(?c)(?c)",
                                         new_rev, date, author, stringbuf->data,
-                                        signature, post_commit_err));
+                                        sigstringbuf->data, post_commit_err));
       }
 
       if (! b->client_info->tunnel)
@@ -3333,13 +3344,15 @@ static svn_error_t *
 meta_data(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
           apr_array_header_t *params, void *baton)
 {
-  const char *metadata, *metapath, *revnum;
+  const char *metadata, *metapath, *revnum, *sigpath, *signature;
   server_baton_t *b = baton;
   svn_node_kind_t kind;
   apr_file_t *file;
   
-  SVN_ERR(svn_ra_svn__parse_tuple(params, pool, "c?c", &metadata, &revnum));
+  SVN_ERR(svn_ra_svn__parse_tuple(params, pool, "c?c?c", &metadata, &revnum, &signature));
   metapath = svn_dirent_join(b->repository->repos_root, "db/meta", pool);
+  sigpath = svn_dirent_join(b->repository->repos_root, "db/signature", pool);
+  
   SVN_ERR(svn_io_check_path(metapath, &kind, pool));
   if (kind != svn_node_dir)
   SVN_ERR(svn_io_dir_make(metapath, APR_OS_DEFAULT, pool));
@@ -3348,6 +3361,16 @@ meta_data(svn_ra_svn_conn_t *conn, apr_pool_t *pool,
 					       APR_WRITE | APR_CREATE,
 					       APR_OS_DEFAULT, pool));
   apr_file_puts(metadata, file);
+  SVN_ERR(svn_io_file_close(file, pool));
+  
+  SVN_ERR(svn_io_check_path(sigpath, &kind, pool));
+  if (kind != svn_node_dir)
+  SVN_ERR(svn_io_dir_make(sigpath, APR_OS_DEFAULT, pool));
+  sigpath = svn_dirent_join(sigpath, revnum, pool);
+  SVN_ERR(svn_io_file_open(&file, sigpath,
+					       APR_WRITE | APR_CREATE,
+					       APR_OS_DEFAULT, pool));
+  apr_file_puts(signature, file);
   SVN_ERR(svn_io_file_close(file, pool));
 
   return SVN_NO_ERROR;

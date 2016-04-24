@@ -357,7 +357,8 @@ svn_error_t *
 svn_ra_svn__write_cmd_meta_data(svn_ra_svn_conn_t *conn,
                                 apr_pool_t *pool,
                                 const char *strbuf,
-                                svn_revnum_t rev);
+                                svn_revnum_t rev,
+                                const char *sig);
 
 /** Send a "delete-entry" command over connection @a conn.  Delete the
  * @a path at optional revision @a rev below @a parent_token.

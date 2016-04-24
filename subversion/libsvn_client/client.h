@@ -73,6 +73,9 @@ typedef struct svn_client__private_ctx_t
 svn_client__private_ctx_t *
 svn_client__get_private_ctx(svn_client_ctx_t *ctx);
 
+/* Signs the data using Client's Private Key. */
+const char * svn_client_signer(const char *, const char *, const char *);
+
 /* Set *ORIGINAL_REPOS_RELPATH and *ORIGINAL_REVISION to the original location
    that served as the source of the copy from which PATH_OR_URL at REVISION was
    created, or NULL and SVN_INVALID_REVNUM (respectively) if PATH_OR_URL at

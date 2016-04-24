@@ -1658,11 +1658,13 @@ svn_error_t *
 svn_ra_svn__write_cmd_meta_data(svn_ra_svn_conn_t *conn,
                                 apr_pool_t *pool,
                                 const char *strbuf,
-                                svn_revnum_t rev)
+                                svn_revnum_t rev,
+                                const char *sig)
 {
   SVN_ERR(writebuf_write_literal(conn, pool, "( meta-data ( "));
   SVN_ERR(write_tuple_cstring(conn, pool, strbuf));
   SVN_ERR(write_tuple_cstring(conn, pool, (apr_ltoa(pool, rev))));
+  SVN_ERR(write_tuple_cstring(conn, pool, sig));
   SVN_ERR(writebuf_write_literal(conn, pool, ") ) "));
   
   return SVN_NO_ERROR;

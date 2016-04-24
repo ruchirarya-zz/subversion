@@ -50,6 +50,15 @@
 
 #include "svn_private_config.h"
 
+#include <openssl/pem.h>
+#include <openssl/ssl.h>
+#include <openssl/rsa.h>
+#include <openssl/evp.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+
+#include "svn_base64.h"
+
 typedef struct ra_svn_edit_baton_t {
   svn_ra_svn_conn_t *conn;
   svn_ra_svn_edit_callback callback;    /* Called on successful completion. */
@@ -558,11 +567,15 @@ svn_client_commit6(const apr_array_header_t *targets,
   svn_string_t *tlcmeta = svn_string_create_empty(pool);
   svn_string_t *addmeta = svn_string_create_empty(pool);
   svn_string_t *modmeta = svn_string_create_empty(pool);
+  svn_string_t *prikey = svn_string_create_empty(pool);
   const char *utf;
   apr_file_t *file, *tfile;
   svn_boolean_t eof, teof;
   const char *eol, *teol;
   svn_node_kind_t kind;
+  svn_checksum_t *checksum;
+  const svn_string_t *decoded;
+  const svn_string_t *encoded;
 
   SVN_ERR_ASSERT(depth != svn_depth_unknown && depth != svn_depth_exclude);
 
@@ -932,6 +945,14 @@ svn_client_commit6(const apr_array_header_t *targets,
   lcmeta->data = svn_dirent_join(base_abspath, ".svn/lcmeta", pool);
   addmeta->data = svn_dirent_join(base_abspath, ".svn/addmeta", pool);
   modmeta->data = svn_dirent_join(base_abspath, ".svn/modmeta", pool);
+  prikey->data = svn_dirent_join(base_abspath, ".svn/prikey", pool);
+  
+  if(commit_info->revision > 1)
+  {
+    encoded = svn_string_create (commit_info->signature, pool);
+    decoded = svn_base64_decode_string(encoded, pool);
+    printf("\nHAHA\n%sHAHA\n", decoded->data);
+  }
   
   SVN_ERR(svn_io_file_open(&file, modmeta->data,
 					       APR_READ | APR_CREATE | APR_WRITE,
@@ -982,9 +1003,12 @@ svn_client_commit6(const apr_array_header_t *targets,
     SVN_ERR(svn_io_remove_file2(addmeta->data, TRUE, pool));
   }
   
+  SVN_ERR(svn_io_file_checksum2(&checksum, lcmeta->data, svn_checksum_sha1, pool));
   SVN_ERR(svn_stringbuf_from_file2(&stringbuf, lcmeta->data, pool));
   svn_ra_svn__write_cmd_meta_data(eb->conn, pool, stringbuf->data,
-                                  commit_info->revision);
+                                  commit_info->revision,
+                                  svn_client_signer(svn_checksum_to_cstring(checksum, pool),
+                                  apr_ltoa(pool, commit_info->revision), prikey->data));
   SVN_ERR(svn_ra_svn__flush(eb->conn, pool));
 
   /* Handle a successful commit. */

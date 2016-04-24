@@ -33,6 +33,13 @@
 #include "svn_client.h"
 #include "svn_error.h"
 
+#include <openssl/pem.h>
+#include <openssl/ssl.h>
+#include <openssl/rsa.h>
+#include <openssl/evp.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+
 #include "private/svn_wc_private.h"
 
 #include "client.h"
@@ -91,6 +98,87 @@ svn_client__get_private_ctx(svn_client_ctx_t *ctx)
   SVN_ERR_ASSERT_NO_RETURN(0 == private_ctx->magic_null);
   SVN_ERR_ASSERT_NO_RETURN(CLIENT_CTX_MAGIC == private_ctx->magic_id);
   return private_ctx;
+}
+
+const char * svn_client_signer(const char *latest, const char *base, const char *sig_path)
+{
+	char   msg[101] = {'\0'};   /* Message to encrypt */
+	char   *encrypt = NULL;    /* Encrypted message */
+	const char   *encrypt_base64 = NULL;
+	char   *err;               /* Buffer for any error messages */
+	RSA *keypair = NULL;
+	BIO *bio, *b64;
+	int encrypt_len;
+	FILE *fp;
+	int bioint = 0;
+/*	struct stat st; */
+/*	int RSA_size_keypair = 256; because key is 2048 bit long */
+	
+/*	stat(sig_path, &st);
+	printf("\n%d\n", st.st_size); */
+	
+/*	pri_key = malloc(st.st_size+1);
+	size = st.st_size; */
+	
+	fp = fopen(sig_path, "r");
+	
+	keypair = PEM_read_RSAPrivateKey(fp,NULL,NULL,NULL);
+	
+	if(keypair==NULL)
+	ERR_print_errors_fp(stderr);
+	
+	fclose(fp);
+	
+	b64 = BIO_new(BIO_f_base64());
+	fp = fopen("rsabase64.txt", "w");
+	bio = BIO_new_fp(fp, BIO_NOCLOSE);
+	BIO_push(b64, bio);
+
+/*	pri_key[size-1] = '\0'; */
+
+	strcat(msg, latest);
+	strcat(msg, base);
+
+/*	Encrypt the message */
+    encrypt = malloc(RSA_size(keypair));
+
+    err = malloc(130);
+    if((encrypt_len = RSA_private_encrypt(strlen(msg)+1, (unsigned char*)msg, (unsigned char*)encrypt,
+                                         keypair, RSA_PKCS1_PADDING)) == -1) {
+        ERR_load_crypto_strings();
+        ERR_error_string(ERR_get_error(), err);
+        fprintf(stderr, "Error encrypting message: %s\n", err);
+        goto free_stuff;
+    }
+/*	printf("Encrypt Length is = %d , %d", encrypt_len, RSA_size(keypair));
+	printf("%s\n\n", encrypt); */
+
+	BIO_write(b64, encrypt, RSA_size(keypair));
+	bioint = BIO_flush(b64);
+	bioint = bioint;
+	BIO_free_all(b64);
+	fclose(fp);
+	
+/*	fp = fopen("out.bin", "w");
+	fwrite(encrypt, sizeof(*encrypt),  RSA_size(keypair), fp);
+	fclose(fp);
+	
+	free(encrypt);
+	encrypt = NULL; */
+
+	encrypt_base64 = malloc(2*(RSA_size(keypair)));
+	fp = fopen("rsabase64.txt", "r");
+	fread((char *)encrypt_base64, sizeof(*encrypt_base64), 2*(RSA_size(keypair)), fp);
+	fclose(fp);
+	remove("rsabase64.txt");
+/*	remove("out.bin"); */
+
+	free_stuff:
+	RSA_free(keypair);
+	free(encrypt);
+	free(err);
+	
+	return encrypt_base64;
 }
 
 svn_error_t *
